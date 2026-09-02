@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vallenta Studio Issues
+    url: https://github.com/Vallenta/Studio/issues
+    about: Report agent problems here. Linux debugging spans the agent and the extension and is tracked in one place.
+  - name: Email Support
+    url: mailto:info@vallenta.de
+    about: Email us directly for support questions or anything that doesn't fit an issue template.

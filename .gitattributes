@@ -1,0 +1,4 @@
+# install.sh is downloaded from a release and piped to sh. A CRLF checkout, which
+# core.autocrlf produces on Windows, breaks its shebang - so line endings are
+# pinned here rather than left to the cloning machine's configuration.
+* text=auto eol=lf
