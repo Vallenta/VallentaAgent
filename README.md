@@ -6,7 +6,7 @@ on the Linux machine, is paired once with the token it prints, and then serves d
 started from Windows.
 
 This repository holds the installer and the documentation. The agent itself is attached to each
-[release](../../releases); the source is not public.
+[release](https://github.com/Vallenta/VallentaAgent/releases); the source is not public.
 
 ## Install and run
 
@@ -24,12 +24,20 @@ command *Copy Linux Agent Install Command* puts that line on the clipboard.
 **`lldb-server` is not included** — the distribution supplies it, and the agent names the package
 to install for the distribution it detects. See the next section.
 
-To install by hand instead, download the release tarball, unpack it anywhere and run the binary.
+To install by hand instead, download the release tarball, unpack it anywhere and make the binary
+executable with `chmod +x vallenta-agent`.
+
+Start it with the two ports written out, because both have to be reachable from the development
+machine and it is easier to open a firewall for numbers that are on the command line:
 
 ```
-chmod +x vallenta-agent
-./vallenta-agent
+vallenta-agent --port 64300 --session-port-base 14301
 ```
+
+Those are the defaults, so plain `vallenta-agent` does the same thing. See [Ports](#ports) for
+what has to be reachable, and what changes when the agent runs in a container.
+
+It prints what it bound, what it found, and the token to pair with:
 
 ```
 VallentaAgent 0.2.0
@@ -100,6 +108,36 @@ instance — it prints the command that does.
 The unit file is written owner-readable only, because `--token` would otherwise leave a pairing
 secret in a world-readable file.
 
+## Updating
+
+Re-running the installer replaces the files in `~/.local/lib/vallenta-agent` with the current
+release. **Stop the agent first** — a running process keeps the binary it started with, so an
+update underneath it changes nothing until the next start.
+
+```
+systemctl --user stop vallenta-agent
+curl -fsSL https://github.com/Vallenta/VallentaAgent/releases/latest/download/install.sh | sh
+systemctl --user start vallenta-agent
+```
+
+Started by hand rather than as a service, stop it with Ctrl-C or `pkill vallenta-agent`, install,
+and start it again.
+
+Paired clients survive an update. They are stored in
+`~/.config/vallenta-agent/authorized_clients.json`, which the installer never touches, so no
+machine has to be paired again. The pairing token still changes at every start, as it always
+does; it is only needed to add a client that is not paired yet.
+
+Vallenta Studio offers this command when it meets an agent too old for it to talk to, so an
+update is usually prompted rather than looked for.
+
+To install a specific release instead of the current one, name it — the variable is read by the
+shell that runs the script, so it goes after the pipe:
+
+```
+curl -fsSL https://github.com/Vallenta/VallentaAgent/releases/latest/download/install.sh | VALLENTA_AGENT_VERSION=0.2.0 sh
+```
+
 ## Scratch root outside the home directory
 
 The agent creates its scratch root itself, which works for any path under `$HOME`. A root
@@ -110,11 +148,31 @@ the first start, or the agent stops with a permission error:
 sudo mkdir -p /srv/vallenta && sudo chown vallenta:vallenta /srv/vallenta
 ```
 
-## Firewall
+## Ports
 
-Two things are opened to the development machine: the control port (64300) and the session range
-shown at startup (14301-14336 by default — one block of nine ports per concurrent debug session).
-The session range must stay within 1024-49151; lldb-server refuses anything higher.
+**Every port the startup banner names must be reachable from the development machine over the
+LAN** — the control port and the whole session range, not just the control port. The agent hands
+the client one block of session ports per debug session, and Vallenta Studio then connects to
+those directly; a session whose block is unreachable fails after pairing has already succeeded.
+
+With the defaults that is **64300** for control and **14301-14336** for sessions: nine ports per
+concurrent session, four sessions. `--max-sessions` and `--session-port-base` move the range,
+which must stay within 1024-49151 — lldb-server refuses anything higher.
+
+### In a container
+
+Publish both, and publish them **unchanged**: the host port must have the same number as the
+container port. The agent reports the ports it bound inside the container, so a block published
+under different numbers sends the debugger to ports nothing is listening on, while the control
+port alone appears to work.
+
+```
+docker run -d --name debug-target -p 64300:64300 -p 14301-14336:14301-14336 <image> sleep infinity
+```
+
+No extra privileges are needed — no `--cap-add`, no `--security-opt`. A second agent on the same
+host needs a second range: start it with `--port 64400 --session-port-base 14401` and publish
+those instead.
 
 ## Security
 
@@ -157,5 +215,6 @@ adds the rest; remove the pairing token before pasting it.
 
 ## License
 
-Proprietary; see [LICENSE](LICENSE). The open-source components the agent is built with are
-listed with their notices in [THIRD-PARTY.md](THIRD-PARTY.md).
+Proprietary; see [LICENSE](https://github.com/Vallenta/VallentaAgent/blob/main/LICENSE). The
+open-source components the agent is built with are listed with their notices in
+[THIRD-PARTY.md](https://github.com/Vallenta/VallentaAgent/blob/main/THIRD-PARTY.md).
