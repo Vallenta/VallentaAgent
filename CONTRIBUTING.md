@@ -1,6 +1,6 @@
 # Contributing
 
-This is a proprietary project — the source code is not open for external contributions.
+This is a proprietary project; the source code is not open for external contributions.
 
 However, we welcome and appreciate:
 - Bug reports and issue submissions
